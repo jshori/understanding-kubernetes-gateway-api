@@ -15,7 +15,7 @@ If you'd like a refresher on what an API is, or on the history of Ingress and wh
 | Part | Title | Covers |
 |---|---|---|
 | 1 | [Roles, Personas, and the Resource Model](01-roles-personas-resource-model.md) | Who Gateway API is designed for (Ian, Chihiro, Ana), what `GatewayClass`, `Gateway`, `HTTPRoute`, and `TLSRoute` are, and how Routes can attach to Gateways across namespaces |
-| 2 | GatewayClass and Gateway, in depth | *(coming soon)* Listener Distinctiveness, TLS modes, addresses |
+| 2 | [GatewayClass and Gateway, in depth](02-gatewayclass-and-gateway-in-depth.md) | Listener Distinctiveness, TLS modes (Terminate vs Passthrough), and the `addresses` field |
 | 3 | Route Types, in depth | *(coming soon)* HTTPRoute, GRPCRoute, TLSRoute, TCPRoute, UDPRoute, and when to use each |
 | 4 | Conformance and Support Levels | *(coming soon)* Release Channels, Core vs Extended vs Implementation-specific features |
 | 5 | ReferenceGrant and BackendTLSPolicy | *(coming soon)* Cross-namespace security, backend TLS validation |
