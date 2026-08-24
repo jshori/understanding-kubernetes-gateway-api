@@ -8,7 +8,7 @@ This series is meant for anyone who finds the official documentation too dense t
 
 This series assumes basic familiarity with Kubernetes concepts like clusters, namespaces, and Services. It does not assume any prior knowledge of Gateway API, or of what an API is in general.
 
-If you'd like a refresher on what an API is, or on the history of Ingress and why Gateway API was created, those are covered in a separate, related series: [kubernetes-networking-explained](../kubernetes-networking-explained).
+If you'd like a refresher on what an API is, or on the history of Ingress and why Gateway API was created, those are covered in a separate, related series: [vCluster-k8s-networking-fundamentals](https://github.com/jshori/vCluster-k8s-networking-fundamentals).
 
 ## Series contents
 
