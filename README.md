@@ -1,6 +1,6 @@
 # Understanding Kubernetes Gateway API
 
-A series that explains Kubernetes' Gateway API from the ground up, one concept at a time, based directly on the official Gateway API documentation, rewritten in plain English with every technical term explained as it comes up.
+A series that explains Kubernete's Gateway API from the ground up, one concept at a time, based directly on the official Gateway API documentation, rewritten in plain English with every technical term explained as it comes up.
 
 This series is meant for anyone who finds the official documentation too dense to start with. Nothing here is invented, every concept is sourced from the official docs (linked at the bottom of each part), just explained more slowly, with simple analogies and worked examples.
 
