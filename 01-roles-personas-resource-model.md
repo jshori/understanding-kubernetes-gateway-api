@@ -2,7 +2,7 @@
 
 This is Part 1 of a series that explains Kubernete's Gateway API from the ground up, one concept at a time. Every technical term is explained as it comes up, in plain English, so no prior Gateway API knowledge is assumed. This part covers who Gateway API is designed for, and the three main types of objects you'll work with throughout the rest of this series.
 
-*(This guide assumes you already know what a Kubernetes cluster is, and that a cluster can be divided into separate sections called namespaces, used to keep different teams' resources organized and separated from each other. If any of that is new to you, it's worth looking up a basic Kubernetes overview first.)*
+*(This guide assumes you already know what a Kubernetes cluster is, and that a cluster can be divided into separate sections called namespaces, used to keep different team's resources organized and separated from each other. If any of that is new to you, it's worth looking up a basic Kubernetes overview first.)*
 
 ## The problem: shared infrastructure, different people
 
