@@ -194,6 +194,7 @@ metadata:
   name: shared-gw
   namespace: infra
 spec:
+  gatewayClassName: my-gateway-class
   listeners:
     - name: https
       protocol: HTTPS
