@@ -183,10 +183,23 @@ If only one side agrees, nothing happens. Chihiro allowing "All" namespaces is m
 
 ## A worked example: Engineering, Finance, and HR
 
-Let's make this concrete with a scenario that's easy to picture: a company with three application teams, Engineering, Finance, and HR, each with their applications running in their own namespace (`engineering`, `finance`, `hr`). None of these namespaces need to know anything about networking, TLS, or load balancers, that's Chihiro's job. So Chihiro creates one dedicated namespace, `infra`, purely to hold the shared Gateway.
+Let's make this concrete with a scenario that's easy to picture: a company with three application teams, Engineering, Finance, and HR, each with their applications running in their own namespace (engineering, finance, hr). None of these namespaces need to know anything about networking, TLS, or load balancers, that's Chihiro's job. So Chihiro creates one dedicated namespace, infra, purely to hold the shared Gateway.
 
-First, Chihiro creates the Gateway, and explicitly opens the door to other namespaces:
+There are three steps here, matching the three personas and the three resources from earlier in this guide. Let's go through them in order.
 
+Step 1: Ian creates the GatewayClass.
+
+Before Chihiro can build anything, there needs to be a template to build it from. That's Ian's job, done once, for the whole cluster:
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: my-gateway-class
+spec:
+  controllerName: example.com/gateway-controller
+```
+
+Step 2: Chihiro creates the Gateway, using that template, and explicitly opens the door to other namespaces:
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
@@ -204,8 +217,7 @@ spec:
           from: All   # explicitly allowing Routes from any namespace
 ```
 
-Then, each team creates their own Route, in their own namespace, explicitly naming the Gateway they want to use:
-
+Step 3: each team (playing the role of Ana) creates their own Route, in their own namespace, explicitly naming the Gateway they want to use, and their own rules for where traffic should go:
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -216,9 +228,29 @@ spec:
   parentRefs:
     - name: shared-gw
       namespace: infra   # explicitly naming which Gateway, and which namespace it's in
+  hostnames:
+    - "engineering.example.com"
+  rules:
+    - matches:
+        - path:
+            value: /api
+      backendRefs:
+        - name: engineering-api-service
+          port: 8080
 ```
 
-Finance and HR would create an almost identical `HTTPRoute`, just in their own namespace, pointing to the same `shared-gw`. None of the three teams need to know that the other two exist. Chihiro only had to build and secure one entry point, instead of three separate ones. This is the practical, everyday value of the persona-based design we started this guide with: Chihiro keeps control over the shared infrastructure, while Ana (in each team) keeps full control over her own application's routing.
+Finance and HR would create an almost identical HTTPRoute, just in their own namespace, with their own hostnames and backendRefs, pointing to the same shared-gw. None of the three teams need to know that the other two exist. Chihiro only had to build and secure one entry point, instead of three separate ones, and Ian only had to define the template once. This is the practical, everyday value of the persona-based design we started this guide with: Ian defines what's possible, Chihiro keeps control over the shared infrastructure, and Ana (in each team) keeps full control over her own application's routing.
+
+Putting it all together: what happens when a request actually arrives
+
+Say a client sends a request to engineering.example.com/api. Here's the path it takes, tying all three objects together:
+
+The request reaches shared-gw. Its https Listener accepts it, since the request is on port 443 with a valid TLS connection.
+The Gateway looks at which Routes are allowed to attach to this Listener (recall allowedRoutes.namespaces.from: All), and finds engineering-route among them, since it explicitly named shared-gw in its parentRefs.
+engineering-route checks its own rules. The hostname matches engineering.example.com, and the path matches /api, so this rule applies.
+The request is forwarded to engineering-api-service, on port 8080.
+
+Notice the GatewayClass itself never appears in this runtime flow, its job was already done earlier, when it told the controller which software should build and run shared-gw in the first place. By the time a real request arrives, the GatewayClass has already done its part.
 
 ## Confirming this against the official documentation
 
