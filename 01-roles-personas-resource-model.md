@@ -245,10 +245,10 @@ Putting it all together: what happens when a request actually arrives
 
 Say a client sends a request to engineering.example.com/api. Here's the path it takes, tying all three objects together:
 
-The request reaches shared-gw. Its https Listener accepts it, since the request is on port 443 with a valid TLS connection.
-The Gateway looks at which Routes are allowed to attach to this Listener (recall allowedRoutes.namespaces.from: All), and finds engineering-route among them, since it explicitly named shared-gw in its parentRefs.
-engineering-route checks its own rules. The hostname matches engineering.example.com, and the path matches /api, so this rule applies.
-The request is forwarded to engineering-api-service, on port 8080.
+1. The request reaches shared-gw. Its https Listener accepts it, since the request is on port 443 with a valid TLS connection.
+2. The Gateway looks at which Routes are allowed to attach to this Listener (recall allowedRoutes.namespaces.from: All), and finds engineering-route among them, since it explicitly named shared-gw in its parentRefs.
+3. engineering-route checks its own rules. The hostname matches engineering.example.com, and the path matches /api, so this rule applies.
+4. The request is forwarded to engineering-api-service, on port 8080.
 
 Notice the GatewayClass itself never appears in this runtime flow, its job was already done earlier, when it told the controller which software should build and run shared-gw in the first place. By the time a real request arrives, the GatewayClass has already done its part.
 
