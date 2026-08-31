@@ -90,6 +90,9 @@ spec:
         mode: Terminate
         certificateRefs:
           - name: engineering-tls-secret
+      allowedRoutes:
+        namespaces:
+          from: All   # default is "Same", we need "All" since Routes live elsewhere
     - name: finance-https
       protocol: HTTPS
       port: 443
@@ -98,9 +101,30 @@ spec:
         mode: Terminate
         certificateRefs:
           - name: finance-tls-secret
+      allowedRoutes:
+        namespaces:
+          from: All   # default is "Same", we need "All" since Routes live elsewhere
 ```
 
+Notice `allowedRoutes.namespaces.from: All` is still needed on each Listener, same as `shared-gw`'s original Listener back in Part 1. Setting a `hostname` doesn't replace this, it's a separate check. `engineering-route` lives in the `engineering` namespace, not `infra`, so without this, it wouldn't even get considered, hostname or no hostname.
+
+Notice each Listener now sets its own `hostname`, unlike `shared-gw`'s original single Listener back in Part 1, which had no `hostname` at all, and so matched anything. Recall from Part 1: a Route's `hostnames` and a Listener's `hostname` need to overlap, hostname intersection, for that Route to be allowed onto that Listener. `engineering-route`, with `hostnames: engineering.example.com`, will attach cleanly to the `engineering-https` Listener above, but wouldn't be able to attach to `finance-https`, since `engineering.example.com` and `finance.example.com` don't intersect.
+
 Notice both Listeners use the same `port` (443). That's allowed here, but only because each has a different `hostname`. This is where the rules in this guide start to matter, later on, we'll see exactly what makes two Listeners like this "distinct" versus "conflicting."
+
+Here's the full picture for a request to `engineering.example.com`, now that there are two Listeners to choose between:
+
+```mermaid
+flowchart TD
+    A["Client TLS ClientHello<br/>SNI: engineering.example.com"] --> B{"SNI compared against<br/>both Listeners' hostname"}
+    B -->|"Matches"| C["engineering-https Listener<br/>selected, its cert loaded"]
+    B -.->|"No match, ignored"| D["finance-https Listener<br/>not selected"]
+    C -->|"allowedRoutes: All lets<br/>engineering-route attach"| E["Decrypts with matched cert,<br/>confirms Host header"]
+    E --> F["engineering-route"]
+    F --> G["engineering-api-service"]
+```
+
+Compare this to Part 1's version above: there, SNI didn't need to do anything, since only one Listener existed to pick from. Here, with two Listeners sharing the same port, SNI is what selects between `engineering-https` and `finance-https`, before decryption even happens, and only after that does the familiar `allowedRoutes` and hostname-intersection check from Part 1 take over.
 
 A `Gateway` can have more than one Listener. The maximum is 64.
 
