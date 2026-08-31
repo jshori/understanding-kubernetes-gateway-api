@@ -1,6 +1,6 @@
 # Understanding Kubernetes Gateway API, Part 5: Service Mesh and GAMMA
 
-This is the final part of the "Understanding Kubernetes Gateway API" series. Every part so far has been about traffic coming in from outside the cluster. This part covers something different: traffic that never leaves the cluster at all, service-to-service traffic, and how Gateway API extends to cover that too.
+Every part so far has been about traffic coming in from outside the cluster. This part covers something different: traffic that never leaves the cluster at all, service-to-service traffic, and how Gateway API extends to cover that too.
 
 ## A new kind of traffic: north-south vs east-west
 
@@ -109,15 +109,17 @@ Step back and look at what actually happened here. GAMMA didn't invent new resou
 
 That's the practical payoff of everything this series has covered. Learn the resource model once, `GatewayClass`, `Gateway`, Routes, Listeners, cross-namespace references, and it extends to both north-south and east-west traffic without needing a second, unrelated system to learn.
 
-## You've completed the series
+## What's been covered so far
 
-Here's a quick look back at everything covered:
+Here's a quick look back:
 
 - **Part 1** introduced the roles Gateway API is designed around, and the core resources, `GatewayClass`, `Gateway`, and Routes
 - **Part 2** went deeper into `Gateway`, Listeners, TLS modes, and the rules that prevent Listeners from conflicting with each other
 - **Part 3** covered the different Route types, `HTTPRoute`, `GRPCRoute`, `TLSRoute`, `TCPRoute`, and `UDPRoute`, and how to pick the right one
 - **Part 4** covered `ReferenceGrant` and `BackendTLSPolicy`, the two resources that handle cross-namespace access and backend certificate trust
 - **Part 5** (this guide) extended everything learned so far into service mesh, east-west traffic
+
+One more part follows this one, Part 6, covering `ListenerSet`, a way for multiple teams to share one `Gateway` without needing its owner to manage every Listener themselves.
 
 ## Sources
 
