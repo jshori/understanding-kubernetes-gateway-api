@@ -223,6 +223,8 @@ spec:
           from: All   # default is "Same", explicitly widened here to any namespace
 ```
 
+If this were left at `Same` (the default), `shared-gw` would only accept Routes from its own namespace, `infra`. Since `engineering-route`, `finance-route`, and `hr-route` each live in their own team's namespace, not `infra`, none of them would ever be considered, they'd be rejected before hostname or anything else even came into the picture. `All` is what makes this whole shared-Gateway setup possible in the first place.
+
 **Step 3: each team (playing the role of Ana) creates their own Route, in their own namespace, explicitly naming the Gateway they want to use, and their own rules for where traffic should go:**
 
 ```yaml
