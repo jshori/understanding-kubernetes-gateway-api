@@ -261,6 +261,14 @@ listeners:
 
 Both Listeners now have the same `protocol`. Same `port`. No `hostname` at all. They're indistinguishable. This is a real conflict. `shared-gw` would fail to become `Accepted`, until Chihiro gives each Listener its own hostname.
 
+**What happens if a user tries to visit the site anyway.**
+
+1. A user opens `https://engineering.example.com` in their browser.
+2. The request reaches `shared-gw`.
+3. But `shared-gw` never became `Accepted`, because of the conflict. It was never properly set up.
+4. There's nothing there to receive the request.
+5. The user doesn't see a clear error message. The page just fails to load, like the address doesn't exist at all.
+
 ## A limit worth knowing about: 64 Listeners per Gateway
 
 A single `Gateway` can hold a maximum of 64 Listeners. For most cases, this is more than enough. But large, multi-tenant setups can hit this ceiling. Imagine `shared-gw` eventually serving dozens of teams and namespaces, not just `engineering`, `finance`, and `hr`.
