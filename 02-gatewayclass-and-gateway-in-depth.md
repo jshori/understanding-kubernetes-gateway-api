@@ -239,31 +239,87 @@ One detail worth knowing: the controller can never pick a winner on its own. It 
 
 ## A worked example: giving Engineering and Finance their own domains
 
-Let's continue the story. The `engineering` team wants `engineering.example.com`, with their own certificate. The `finance` team wants `finance.example.com`, with theirs. Both teams still keep their applications in their own namespaces, `engineering` and `finance`. Only the shared `Gateway`, `shared-gw`, lives in `infra`.
+Let's continue the story, and build it the same way Part 1 did, three steps, one per persona, except this time Chihiro's Gateway holds two Listeners instead of one.
 
-Their hostnames are different. So this is fine. These Listeners are distinct. Both can live on `shared-gw` at the same time:
+**Step 1: Ian's GatewayClass.** No new work here, both teams reuse the same template Ian already built in Part 1:
 
 ```yaml
-listeners:
-  - name: engineering-https
-    protocol: HTTPS
-    port: 443
-    hostname: "engineering.example.com"
-    tls:
-      mode: Terminate
-      certificateRefs:
-        - name: engineering-tls-secret
-  - name: finance-https
-    protocol: HTTPS
-    port: 443
-    hostname: "finance.example.com"
-    tls:
-      mode: Terminate
-      certificateRefs:
-        - name: finance-tls-secret
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: internal-lb-class
+spec:
+  controllerName: example.com/gateway-controller
 ```
 
-Now compare that to this. Here, Chihiro forgot to set the `hostname` field on either Listener:
+**Step 2: Chihiro builds the Gateway with two Listeners**, one hostname each, one certificate each. The `engineering` team wants `engineering.example.com`, with their own certificate. The `finance` team wants `finance.example.com`, with theirs. Both teams still keep their applications in their own namespaces, `engineering` and `finance`. Only the shared `Gateway`, `shared-gw`, lives in `infra`:
+
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: shared-gw
+  namespace: infra
+spec:
+  gatewayClassName: internal-lb-class
+  listeners:
+    - name: engineering-https
+      protocol: HTTPS
+      port: 443
+      hostname: "engineering.example.com"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: engineering-tls-secret
+      allowedRoutes:
+        namespaces:
+          from: All   # default is "Same", we need "All" since Routes live elsewhere
+    - name: finance-https
+      protocol: HTTPS
+      port: 443
+      hostname: "finance.example.com"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: finance-tls-secret
+      allowedRoutes:
+        namespaces:
+          from: All   # default is "Same", we need "All" since Routes live elsewhere
+```
+
+Their hostnames are different, so this is fine, these Listeners are distinct, and both can live on `shared-gw` at the same time.
+
+**Step 3: each team creates their own Route**, now naming exactly which Listener they want, using `sectionName`:
+
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: engineering-route
+  namespace: engineering
+spec:
+  parentRefs:
+    - name: shared-gw
+      namespace: infra
+      sectionName: engineering-https
+  hostnames:
+    - "engineering.example.com"
+  rules:
+    - matches:
+        - path:
+            value: /api
+      backendRefs:
+        - name: engineering-api-service
+          port: 8080
+```
+
+The `finance` team creates an almost identical `HTTPRoute`, in the `finance` namespace, with `sectionName: finance-https`, its own `hostnames`, and its own `backendRefs`.
+
+This is different from Part 1 in one important way. Back then, `engineering-route` didn't need to say which Listener it wanted, there was only one. Now that `shared-gw` has two, `sectionName` makes the choice explicit, rather than relying only on hostname intersection to sort it out.
+
+The full request flow for this exact setup, SNI selecting the Listener, then the Route forwarding to the backend, was already traced through in the diagram earlier in this guide.
+
+**Now, the conflict case.** Compare the Step 2 Gateway above to this. Here, Chihiro forgot to set the `hostname` field on either Listener:
 
 ```yaml
 listeners:
@@ -274,6 +330,9 @@ listeners:
       mode: Terminate
       certificateRefs:
         - name: engineering-tls-secret
+    allowedRoutes:
+      namespaces:
+        from: All
   - name: finance-https
     protocol: HTTPS
     port: 443
@@ -281,6 +340,9 @@ listeners:
       mode: Terminate
       certificateRefs:
         - name: finance-tls-secret
+    allowedRoutes:
+      namespaces:
+        from: All
 ```
 
 Both Listeners now have the same `protocol`. Same `port`. No `hostname` at all. They're indistinguishable. This is a real conflict. `shared-gw` would fail to become `Accepted`, until Chihiro gives each Listener its own hostname.
