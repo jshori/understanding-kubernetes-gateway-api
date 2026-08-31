@@ -239,18 +239,18 @@ spec:
           port: 8080
 ```
 
-Finance and HR would create an almost identical HTTPRoute, just in their own namespace, with their own hostnames and backendRefs, pointing to the same shared-gw. None of the three teams need to know that the other two exist. Chihiro only had to build and secure one entry point, instead of three separate ones, and Ian only had to define the template once. This is the practical, everyday value of the persona-based design we started this guide with: Ian defines what's possible, Chihiro keeps control over the shared infrastructure, and Ana (in each team) keeps full control over her own application's routing.
+Finance and HR would create an almost identical `HTTPRoute`, just in their own namespace, with their own `hostnames` and `backendRefs`, pointing to the same `shared-gw`. None of the three teams need to know that the other two exist. Chihiro only had to build and secure one entry point, instead of three separate ones, and Ian only had to define the template once. This is the practical, everyday value of the persona-based design we started this guide with: Ian defines what's possible, Chihiro keeps control over the shared infrastructure, and Ana (in each team) keeps full control over her own application's routing.
 
-Putting it all together: what happens when a request actually arrives
+**Putting it all together: what happens when a request actually arrives**
 
-Say a client sends a request to engineering.example.com/api. Here's the path it takes, tying all three objects together:
+Say a client sends a request to `engineering.example.com/api`. Here's the path it takes, tying all three objects together:
 
-1. The request reaches shared-gw. Its https Listener accepts it, since the request is on port 443 with a valid TLS connection.
-2. The Gateway looks at which Routes are allowed to attach to this Listener (recall allowedRoutes.namespaces.from: All), and finds engineering-route among them, since it explicitly named shared-gw in its parentRefs.
-3. engineering-route checks its own rules. The hostname matches engineering.example.com, and the path matches /api, so this rule applies.
-4. The request is forwarded to engineering-api-service, on port 8080.
+1. The request reaches `shared-gw`. Its `https` Listener accepts it, since the request is on port 443 with a valid TLS connection.
+2. The `Gateway` looks at which Routes are allowed to attach to this Listener (recall `allowedRoutes.namespaces.from: All`), and finds `engineering-route` among them, since it explicitly named `shared-gw` in its `parentRefs`.
+3. `engineering-route` checks its own rules. The hostname matches `engineering.example.com`, and the path matches `/api`, so this rule applies.
+4. The request is forwarded to `engineering-api-service`, on port 8080.
 
-Notice the GatewayClass itself never appears in this runtime flow, its job was already done earlier, when it told the controller which software should build and run shared-gw in the first place. By the time a real request arrives, the GatewayClass has already done its part.
+Notice the `GatewayClass` itself never appears in this runtime flow, its job was already done earlier, when it told the controller which software should build and run `shared-gw` in the first place. By the time a real request arrives, the `GatewayClass` has already done its part.
 
 ## Confirming this against the official documentation
 
