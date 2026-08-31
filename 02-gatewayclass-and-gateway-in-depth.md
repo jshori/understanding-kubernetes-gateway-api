@@ -289,6 +289,8 @@ spec:
 
 Their hostnames are different, so this is fine, these Listeners are distinct, and both can live on `shared-gw` at the same time.
 
+Notice `allowedRoutes.namespaces.from: All` appears on both Listeners here, and it's doing the same job it did back in Part 1. If either Listener were left at `Same` (the default), it would only accept Routes from `infra`, not `engineering` or `finance`. `engineering-route` and `finance-route` would be rejected outright, before hostname intersection ever got a chance to run. Two separate checks have to pass, namespace first, then hostname, and `All` is what lets the first one succeed here.
+
 **Step 3: each team creates their own Route**, now naming exactly which Listener they want, using `sectionName`:
 
 ```yaml
