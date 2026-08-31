@@ -2,7 +2,7 @@
 
 This is Part 1 of a series that explains Kubernete's Gateway API from the ground up, one concept at a time. Every technical term is explained as it comes up, in plain English, so no prior Gateway API knowledge is assumed. This part covers who Gateway API is designed for, and the three main types of objects you'll work with throughout the rest of this series.
 
-*(This guide assumes you already know what a Kubernetes cluster is, and that a cluster can be divided into separate sections called namespaces, used to keep different team's resources organized and separated from each other. If any of that is new to you, it's worth looking up a basic Kubernetes overview first.)*
+*(This guide assumes you already know what a Kubernetes cluster is, and that a cluster can be divided into separate sections called namespaces, used to keep different teams' resources organized and separated from each other. If any of that is new to you, it's worth looking up a basic Kubernetes overview first.)*
 
 ## The problem: shared infrastructure, different people
 
@@ -129,6 +129,10 @@ spec:
           port: 8080
 ```
 
+That `hostnames` field isn't just a label, it's checked against something specific. Every `Gateway` Listener has its own `hostname` field too (covered in more depth in Part 2). For a Route to actually be allowed to attach to a Listener, the two need to overlap, this is officially called **hostname intersection**. If a Route says `example.com` but the Listener it's attaching to only accepts `other.com`, the attachment fails.
+
+One detail worth knowing now: if a Listener doesn't set a `hostname` at all, it's treated as a wildcard, matching any Route's hostname. We'll see this exact situation in the worked example coming up.
+
 ### TLSRoute
 
 `TLSRoute` is for the opposite situation, when you want to keep the traffic encrypted all the way to the backend, and never let the `Gateway` read it at all.
@@ -183,13 +187,14 @@ If only one side agrees, nothing happens. Chihiro allowing "All" namespaces is m
 
 ## A worked example: Engineering, Finance, and HR
 
-Let's make this concrete with a scenario that's easy to picture: a company with three application teams, Engineering, Finance, and HR, each with their applications running in their own namespace (engineering, finance, hr). None of these namespaces need to know anything about networking, TLS, or load balancers, that's Chihiro's job. So Chihiro creates one dedicated namespace, infra, purely to hold the shared Gateway.
+Let's make this concrete with a scenario that's easy to picture: a company with three application teams, Engineering, Finance, and HR, each with their applications running in their own namespace (`engineering`, `finance`, `hr`). None of these namespaces need to know anything about networking, TLS, or load balancers, that's Chihiro's job. So Chihiro creates one dedicated namespace, `infra`, purely to hold the shared Gateway.
 
 There are three steps here, matching the three personas and the three resources from earlier in this guide. Let's go through them in order.
 
-Step 1: Ian creates the GatewayClass.
+**Step 1: Ian creates the GatewayClass.**
 
 Before Chihiro can build anything, there needs to be a template to build it from. That's Ian's job, done once, for the whole cluster:
+
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1
 kind: GatewayClass
@@ -199,7 +204,8 @@ spec:
   controllerName: example.com/gateway-controller
 ```
 
-Step 2: Chihiro creates the Gateway, using that template, and explicitly opens the door to other namespaces:
+**Step 2: Chihiro creates the Gateway, using that template, and explicitly opens the door to other namespaces:**
+
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
@@ -214,10 +220,11 @@ spec:
       port: 443
       allowedRoutes:
         namespaces:
-          from: All   # explicitly allowing Routes from any namespace
+          from: All   # default is "Same", explicitly widened here to any namespace
 ```
 
-Step 3: each team (playing the role of Ana) creates their own Route, in their own namespace, explicitly naming the Gateway they want to use, and their own rules for where traffic should go:
+**Step 3: each team (playing the role of Ana) creates their own Route, in their own namespace, explicitly naming the Gateway they want to use, and their own rules for where traffic should go:**
+
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -245,12 +252,22 @@ Finance and HR would create an almost identical `HTTPRoute`, just in their own n
 
 Say a client sends a request to `engineering.example.com/api`. Here's the path it takes, tying all three objects together:
 
+```mermaid
+flowchart TD
+    A["Client sends request<br/>engineering.example.com/api"] --> B["shared-gw Listener<br/>no hostname set"]
+    B -->|"allowedRoutes: All lets<br/>engineering-route attach"| C["Decrypts traffic,<br/>reads Host header"]
+    C -->|"Host header matches<br/>engineering-route's hostnames"| D["engineering-route"]
+    D -->|"path /api also matches"| E["engineering-api-service"]
+```
+
 1. The request reaches `shared-gw`. Its `https` Listener accepts it, since the request is on port 443 with a valid TLS connection.
-2. The `Gateway` looks at which Routes are allowed to attach to this Listener (recall `allowedRoutes.namespaces.from: All`), and finds `engineering-route` among them, since it explicitly named `shared-gw` in its `parentRefs`.
-3. `engineering-route` checks its own rules. The hostname matches `engineering.example.com`, and the path matches `/api`, so this rule applies.
+2. Before this request ever arrived, `engineering-route` had already been allowed to attach to this Listener. Two things made that possible: the Listener's `allowedRoutes.namespaces.from: All` let it accept Routes from any namespace, and since this Listener never set its own `hostname`, it acts as a wildcard, so `engineering-route`'s `hostnames: engineering.example.com` intersected with it just fine.
+3. Now, for this specific request, the `Gateway` checks the Host header, `engineering.example.com`, against the Routes attached to this Listener. `engineering-route` matches, both on hostname and on the `/api` path, so this rule applies.
 4. The request is forwarded to `engineering-api-service`, on port 8080.
 
-Notice the `GatewayClass` itself never appears in this runtime flow, its job was already done earlier, when it told the controller which software should build and run `shared-gw` in the first place. By the time a real request arrives, the `GatewayClass` has already done its part.
+Notice hostname gets checked twice here, but for two different reasons: once, earlier, to decide whether `engineering-route` was even allowed to attach to this Listener at all, and again here, for this specific request, to decide which of the (possibly several) attached Routes should actually handle it.
+
+Notice also the `GatewayClass` itself never appears in this runtime flow, its job was already done earlier, when it told the controller which software should build and run `shared-gw` in the first place. By the time a real request arrives, the `GatewayClass` has already done its part.
 
 ## Confirming this against the official documentation
 
