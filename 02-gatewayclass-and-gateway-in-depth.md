@@ -37,8 +37,13 @@ metadata:
   namespace: infra
 spec:
   gatewayClassName: internal-lb-class   # this is the link to the GatewayClass above
-  listeners: []
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
 ```
+
+(One small note on the example above: `listeners` is a required field, a `Gateway` can't exist without at least one. We've included a minimal one here so the YAML is valid, even though this example is really about `gatewayClassName`. `listeners` gets its own full explanation next.)
 
 Here's why this field matters so much. A controller only pays attention to `Gateway` objects that point to a `GatewayClass` it recognizes as its own. It ignores everything else, it doesn't even look at them.
 
@@ -120,7 +125,10 @@ spec:
   addresses:
     - type: IPAddress
       value: "203.0.113.10"
-  listeners: []
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
 ```
 
 Now `shared-gw` always uses `203.0.113.10`, even if it gets recreated later. The firewall rule and DNS record stay valid.
@@ -145,7 +153,7 @@ In Passthrough mode, the `Gateway` never decrypts anything. It only reads the ho
 
 The `Gateway` never touches the encrypted contents. So it doesn't need a certificate at all. `certificateRefs` isn't used here.
 
-This is the mode `TLSRoute` depends on. It's often used for things like databases, where the backend itself handles the encryption.
+This is the mode `TLSRoute` has traditionally been paired with, to keep traffic encrypted end to end. (Newer Gateway API versions also allow `TLSRoute` to work with `Terminate` mode, but `Passthrough` remains the more common pairing, and the one this guide focuses on.) It's often used for things like databases, where the backend itself handles the encryption.
 
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1
@@ -187,9 +195,9 @@ Different Listener types get compared differently. Why? Because each protocol sh
 
 Before the rules, two quick definitions.
 
-A **TLS Listener** has `protocol: TLS`. It's always in Passthrough mode. It pairs with `TLSRoute`.
+A **TLS Listener** has `protocol: TLS`. Its `tls.mode` can be set to either `Terminate` or `Passthrough`, the same choice described earlier in this guide. It pairs with `TLSRoute`.
 
-An **HTTPS Listener** has `protocol: HTTPS`. It's usually in Terminate mode. It pairs with `HTTPRoute`, after the `Gateway` decrypts the traffic.
+An **HTTPS Listener** has `protocol: HTTPS`. Unlike a TLS Listener, it can only use `Terminate` mode, since `HTTPRoute` (which it pairs with) needs to read the decrypted request to do its job.
 
 Now, the rules.
 
@@ -257,7 +265,7 @@ Both Listeners now have the same `protocol`. Same `port`. No `hostname` at all. 
 
 A single `Gateway` can hold a maximum of 64 Listeners. For most cases, this is more than enough. But large, multi-tenant setups can hit this ceiling. Imagine `shared-gw` eventually serving dozens of teams and namespaces, not just `engineering`, `finance`, and `hr`.
 
-Gateway API has a newer resource for this. It's called `ListenerSet`. It lets Listeners be defined in separate objects. Those objects then get merged onto a `Gateway`. This is a newer, more advanced part of the API. It deserves its own coverage later in this series, rather than a quick mention here.
+Gateway API has a newer resource for this. It's called `ListenerSet`. It lets Listeners be defined in separate objects. Those objects then get merged onto a `Gateway`. This is a newer, more advanced part of the API, and this series doesn't cover it in depth, but it's worth knowing it exists if `shared-gw` ever needs to scale beyond a handful of teams. The official docs, linked below, are the best place to go deeper on it.
 
 ## What comes next
 
