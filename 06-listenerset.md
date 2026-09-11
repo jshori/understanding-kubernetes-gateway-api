@@ -74,71 +74,71 @@ Instead, the controller constantly watches for `ListenerSet` objects, in the bac
 
 By the time a real request arrives, there's no searching to do. The proxy already has a single, ready-to-use list that includes every Listener from `shared-gw` itself and from every attached `ListenerSet`. Matching a request to the right Listener is then just a quick lookup against that already-built list, not a live search across namespaces.
 
-## A worked example: the HR team self-serves their own domain
+## A worked example: the Marketing team self-serves their own domain
 
-Recall from Part 1, the `hr` team was part of the original story, but never got its own domain the way `engineering` and `finance` did in Part 2. Let's give them one now, using `ListenerSet` instead of asking Chihiro to edit `shared-gw`.
+Recall from Part 1, the `marketing` team was part of the original story, but never got its own domain the way `engineering` and `finance` did in Part 2. Let's give them one now, using `ListenerSet` instead of asking Chihiro to edit `shared-gw`.
 
-**Step 1: the HR team creates their own ListenerSet, in their own namespace:**
+**Step 1: the Marketing team creates their own ListenerSet, in their own namespace:**
 
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1
 kind: ListenerSet
 metadata:
-  name: hr-listeners
-  namespace: hr
+  name: marketing-listeners
+  namespace: marketing
 spec:
   parentRef:
     name: shared-gw
     kind: Gateway
     group: gateway.networking.k8s.io
   listeners:
-    - name: hr-https
+    - name: marketing-https
       protocol: HTTPS
       port: 443
-      hostname: "hr.example.com"
+      hostname: "marketing.example.com"
       tls:
         mode: Terminate
         certificateRefs:
-          - name: hr-tls-secret
+          - name: marketing-tls-secret
 ```
 
-Notice `hr-tls-secret` doesn't need a `ReferenceGrant` from Part 4. Since the `ListenerSet` and the Secret it references both live in the same namespace, `hr`, this stays entirely within the default, same-namespace case, no cross-namespace permission needed.
+Notice `marketing-tls-secret` doesn't need a `ReferenceGrant` from Part 4. Since the `ListenerSet` and the Secret it references both live in the same namespace, `marketing`, this stays entirely within the default, same-namespace case, no cross-namespace permission needed.
 
-**Step 2: the HR team creates their Route, attaching to the ListenerSet instead of the Gateway directly:**
+**Step 2: the Marketing team creates their Route, attaching to the ListenerSet instead of the Gateway directly:**
 
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: hr-route
-  namespace: hr
+  name: marketing-route
+  namespace: marketing
 spec:
   parentRefs:
-    - name: hr-listeners
+    - name: marketing-listeners
       kind: ListenerSet
       group: gateway.networking.k8s.io
   hostnames:
-    - "hr.example.com"
+    - "marketing.example.com"
   rules:
     - matches:
         - path:
             value: /api
       backendRefs:
-        - name: hr-api-service
+        - name: marketing-api-service
           port: 8080
 ```
 
-Notice `parentRefs` now says `kind: ListenerSet`, not `Gateway`. Chihiro never had to touch anything for this to work, the HR team did all of it themselves, in their own namespace.
+Notice `parentRefs` now says `kind: ListenerSet`, not `Gateway`. Chihiro never had to touch anything for this to work, the Marketing team did all of it themselves, in their own namespace.
 
 ## What happens when a request actually arrives
 
-Say a client sends a request to `hr.example.com/api`. Here's the path it takes:
+Say a client sends a request to `marketing.example.com/api`. Here's the path it takes:
 
-1. The request reaches `shared-gw`. By this point (recall the previous section), the Gateway's own Listeners (`engineering-https`, `finance-https`) and `hr-listeners`'s Listener (`hr-https`) have already been merged into one combined list, this happened when `hr-listeners` was created, not now.
-2. SNI selects the right Listener from that already-built list, the same mechanism from Part 2, this time picking `hr-https` because the SNI matches its hostname.
-3. `hr-https` decrypts the traffic using `hr-tls-secret`, and confirms the Host header.
-4. `hr-route`, attached to `hr-listeners`, matches on hostname and the `/api` path.
-5. The request is forwarded to `hr-api-service`.
+1. The request reaches `shared-gw`. By this point (recall the previous section), the Gateway's own Listeners (`engineering-https`, `finance-https`) and `marketing-listeners`'s Listener (`marketing-https`) have already been merged into one combined list, this happened when `marketing-listeners` was created, not now.
+2. SNI selects the right Listener from that already-built list, the same mechanism from Part 2, this time picking `marketing-https` because the SNI matches its hostname.
+3. `marketing-https` decrypts the traffic using `marketing-tls-secret`, and confirms the Host header.
+4. `marketing-route`, attached to `marketing-listeners`, matches on hostname and the `/api` path.
+5. The request is forwarded to `marketing-api-service`.
 
 Notice this is the exact same flow as Part 2's diagrams, the only difference is where the winning Listener actually lives, inside `shared-gw` itself, or inside a `ListenerSet` attached to it. From the request's point of view, there's no difference at all.
 
@@ -148,7 +148,7 @@ Since `shared-gw`'s own Listeners and any attached `ListenerSet`'s Listeners are
 
 Listeners on the parent Gateway always take priority over Listeners from a `ListenerSet`. Among competing `ListenerSet`s, the one created earliest wins. If two `ListenerSet`s were created at the exact same time, the one whose name comes first alphabetically wins. The loser is marked `Accepted: false` and `Conflicted: true`, it doesn't get silently dropped, its status will clearly show it lost.
 
-This matters in practice: if the HR team ever accidentally picked a hostname that Chihiro's own Listener already used directly on `shared-gw`, Chihiro's Listener would always win, protecting the shared infrastructure from being overridden by a self-service mistake.
+This matters in practice: if the Marketing team ever accidentally picked a hostname that Chihiro's own Listener already used directly on `shared-gw`, Chihiro's Listener would always win, protecting the shared infrastructure from being overridden by a self-service mistake.
 
 ## What's been covered across this series
 
