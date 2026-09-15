@@ -63,7 +63,9 @@ This lab uses a small, custom-built gRPC server, so the exact service and method
 
 The server implements the standard `Greeter` service with one method, `SayHello`, this is the canonical example used throughout the gRPC ecosystem.
 
-`helloworld.proto`:
+Create a new folder (for example `grpc-demo`), and inside it, create these three files with the content below.
+
+Create a file named `helloworld.proto`:
 ```proto
 syntax = "proto3";
 
@@ -82,7 +84,7 @@ message HelloReply {
 }
 ```
 
-`server.py`:
+Create a file named `server.py`:
 ```python
 from concurrent import futures
 import grpc
@@ -108,7 +110,7 @@ if __name__ == "__main__":
     serve()
 ```
 
-`Dockerfile`:
+Create a file named `Dockerfile`:
 ```dockerfile
 FROM python:3.12-slim
 WORKDIR /app
@@ -118,6 +120,8 @@ RUN python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. helloworl
 EXPOSE 9000
 CMD ["python", "server.py"]
 ```
+
+Once all three files are saved in the same folder, build and load the image from inside that folder.
 
 ### Step 1: Ana's step, build and load the server
 
@@ -384,7 +388,9 @@ No hostname was given anywhere in this request, there was nothing to give, the p
 
 Because of this, the backend also needs to be a real UDP server, `hashicorp/http-echo` only speaks TCP, so it can't be reused here. This lab uses another small, custom-built server for the same reason as the gRPC one, to guarantee `arm64` compatibility and know its exact behavior.
 
-`udp_echo.py`:
+Create a new folder (for example `udp-demo`), and inside it, create these two files.
+
+Create a file named `udp_echo.py`:
 ```python
 import socket
 
@@ -402,7 +408,7 @@ if __name__ == "__main__":
     serve()
 ```
 
-`Dockerfile`:
+Create a file named `Dockerfile`:
 ```dockerfile
 FROM python:3.12-slim
 WORKDIR /app
@@ -410,6 +416,8 @@ COPY udp_echo.py .
 EXPOSE 9999/udp
 CMD ["python", "udp_echo.py"]
 ```
+
+Once both files are saved in the same folder, build and load the image from inside that folder.
 
 ### Step 1: Ana's step, build, load, and deploy
 
